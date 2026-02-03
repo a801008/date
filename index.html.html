@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>製造日期查詢小工具</title>
+    <style>
+        body {
+            font-family: 'Microsoft JhengHei', 'Segoe UI', sans-serif;
+            background-color: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        .card {
+            background: white;
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 450px;
+            text-align: center;
+        }
+        h2 { 
+            color: #333; 
+            margin-bottom: 20px; 
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        /* 圖片區域樣式 */
+        .example-container {
+            margin-bottom: 25px;
+            padding: 10px;
+            background: #fff5f5;
+            border: 2px dashed #ffcccc;
+            border-radius: 10px;
+        }
+        .example-img {
+            width: 100%;
+            height: auto;
+            border-radius: 8px;
+            display: block;
+        }
+        .img-note {
+            font-size: 14px;
+            color: #d63031;
+            margin-top: 5px;
+            display: none; /* 預設隱藏錯誤訊息 */
+        }
+        /* 如果圖片破圖，顯示提示 */
+        img:onerror {
+            display: none;
+        }
+        .example-img:not([src]):not([srcset]) + .img-note,
+        .example-img[src=""] + .img-note {
+            display: block;
+        }
+
+        /* 輸入與按鈕 */
+        .input-group {
+            margin-bottom: 20px;
+            position: relative;
+        }
+        input {
+            width: 100%;
+            padding: 15px;
+            font-size: 24px;
+            text-transform: uppercase;
+            text-align: center;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            letter-spacing: 4px;
+            box-sizing: border-box;
+            font-weight: bold;
+            color: #333;
+            transition: border-color 0.3s;
+        }
+        input:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 4px rgba(0,123,255,0.1);
+        }
+        button {
+            background: linear-gradient(135deg, #007bff, #0056b3);
+            color: white;
+            border: none;
+            padding: 15px;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 12px;
+            cursor: pointer;
+            width: 100%;
+            box-shadow: 0 4px 6px rgba(0,123,255,0.2);
+            transition: transform 0.1s, box-shadow 0.1s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0,123,255,0.3);
+        }
+        button:active {
+            transform: translateY(0);
+        }
+
+        /* 結果顯示區 */
+        #result {
+            margin-top: 25px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            min-height: 80px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid #eee;
+        }
+        .result-date {
+            font-size: 28px;
+            color: #00b894;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .result-error {
+            color: #d63031;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        .label-text { font-size: 14px; color: #636e72; }
+        
+        .footer {
+            margin-top: 20px;
+            font-size: 12px;
+            color: #b2bec3;
+        }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>🔍 製造日期查詢</h2>
+    
+    <div class="example-container">
+        <img src="ex.jpg" class="example-img" alt="範本圖示" onerror="this.style.display='none'; document.getElementById('error-msg').style.display='block';">
+        <div id="error-msg" class="img-note" style="display:none;">
+            ⚠️ 找不到圖片<br>請確認「範本.jpg」是否與此檔案在同一個資料夾中
+        </div>
+        <p style="font-size:13px; color:#666; margin-top:8px;">輸入序號中關鍵的三碼 (如 QC5)</p>
+    </div>
+
+    <div class="input-group">
+        <input type="text" id="code-input" maxlength="3" placeholder="輸入三碼" onkeyup="checkEnter(event)">
+    </div>
+    
+    <button onclick="decodeDate()">查詢日期</button>
+
+    <div id="result">
+        <span style="color:#aaa;">請輸入代碼後點擊查詢</span>
+    </div>
+
+    <div class="footer">適用規則：G5B 格式 (海爾淨水器濾芯等)</div>
+</div>
+
+<script>
+    // 定義對照表
+    const yearMap = {
+        '5': '2005', '6': '2006', '7': '2007', '8': '2008', '9': '2009',
+        'A': '2010', 'B': '2011', 'C': '2012', 'D': '2013', 'E': '2014',
+        'F': '2015', 'G': '2016', 'H': '2017', 'J': '2018', 'K': '2019',
+        'L': '2020', 'M': '2021', 'N': '2022', 'P': '2023', 'Q': '2024',
+        'R': '2025', 'S': '2026', 'T': '2027', 'U': '2028', 'V': '2029',
+        'W': '2030', 'X': '2031'
+    };
+
+    const monthMap = {
+        '1': '01', '2': '02', '3': '03', '4': '04', '5': '05', '6': '06',
+        '7': '07', '8': '08', '9': '09', 'A': '10', 'B': '11', 'C': '12'
+    };
+
+    const dateMap = {
+        '1': '01', '2': '02', '3': '03', '4': '04', '5': '05', 
+        '6': '06', '7': '07', '8': '08', '9': '09', 
+        'A': '10', 'B': '11', 'C': '12', 'D': '13', 'E': '14', 
+        'F': '15', 'G': '16', 'H': '17', 'J': '18', 'K': '19', 
+        'L': '20', 'M': '21', 'N': '22', 'P': '23', 'Q': '24', 
+        'R': '25', 'S': '26', 'T': '27', 'U': '28', 'V': '29', 
+        'W': '30', 'X': '31'
+    };
+
+    function checkEnter(event) {
+        if (event.key === "Enter") {
+            decodeDate();
+        }
+    }
+
+    function decodeDate() {
+        let code = document.getElementById('code-input').value.trim().toUpperCase();
+        let resultDiv = document.getElementById('result');
+
+        // 清空並準備顯示
+        resultDiv.innerHTML = "";
+
+        if (code.length !== 3) {
+            resultDiv.innerHTML = `<span class="result-error">❌ 請輸入完整的 3 碼代碼</span>`;
+            return;
+        }
+
+        let yChar = code[0];
+        let mChar = code[1];
+        let dChar = code[2];
+
+        let year = yearMap[yChar];
+        let month = monthMap[mChar];
+        let date = dateMap[dChar];
+
+        if (year && month && date) {
+            resultDiv.innerHTML = `
+                <span class="label-text">製造日期</span>
+                <div class="result-date">${year}.${month}.${date}</div>
+            `;
+        } else {
+            resultDiv.innerHTML = `<span class="result-error">❌ 無法辨識的代碼</span><br><span style="font-size:12px;color:#999">請確認是否輸入正確 (如: QC5)</span>`;
+        }
+    }
+</script>
+
+</body>
+</html>
